@@ -5,10 +5,12 @@ package srv
 import kotlinx.cinterop.COpaquePointer
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.cinterop.IntVar
+import kotlinx.cinterop.UByteVar
 import kotlinx.cinterop.StableRef
 import kotlinx.cinterop.alloc
 import kotlinx.cinterop.asStableRef
 import kotlinx.cinterop.convert
+import kotlinx.cinterop.get
 import kotlinx.cinterop.memScoped
 import kotlinx.cinterop.ptr
 import kotlinx.cinterop.reinterpret
@@ -16,8 +18,9 @@ import kotlinx.cinterop.sizeOf
 import kotlinx.cinterop.staticCFunction
 import kotlinx.cinterop.toKString
 import kotlinx.cinterop.value
-import platform.posix.AF_INET
-import platform.posix.INADDR_ANY
+import platform.posix.AF_INET6
+import platform.posix.IPPROTO_IPV6
+import platform.posix.IPV6_V6ONLY
 import platform.posix.POLLIN
 import platform.posix.SIGPIPE
 import platform.posix.SIG_IGN
@@ -37,7 +40,7 @@ import platform.posix.pthread_detach
 import platform.posix.pthread_tVar
 import platform.posix.setsockopt
 import platform.posix.signal
-import platform.posix.sockaddr_in
+import platform.posix.sockaddr_in6
 import platform.posix.socket
 import platform.posix.socklen_tVar
 import platform.posix.strerror
@@ -84,26 +87,31 @@ class HttpServer(private val options: Options) {
     }
 
     private fun openServerSocket(): Int = memScoped {
-        val serverSocket = socket(AF_INET, SOCK_STREAM, 0)
+        val serverSocket = socket(AF_INET6, SOCK_STREAM, 0)
         failIf(serverSocket < 0, "Unable to create socket")
-        val reuseAddress = alloc<IntVar>().apply { value = 1 }
-        setsockopt(serverSocket, SOL_SOCKET, SO_REUSEADDR, reuseAddress.ptr, sizeOf<IntVar>().convert())
-        val address = alloc<sockaddr_in>()
-        memset(address.ptr, 0, sizeOf<sockaddr_in>().convert())
-        address.sin_family = AF_INET.convert()
-        address.sin_port = toNetworkByteOrder(port)
-        address.sin_addr.s_addr = INADDR_ANY
-        failIf(bind(serverSocket, address.ptr.reinterpret(), sizeOf<sockaddr_in>().convert()) != 0, "Unable to bind port $port")
+        setOption(serverSocket, SOL_SOCKET, SO_REUSEADDR, 1)
+        setOption(serverSocket, IPPROTO_IPV6, IPV6_V6ONLY, 0)
+        val address = alloc<sockaddr_in6>()
+        memset(address.ptr, 0, sizeOf<sockaddr_in6>().convert())
+        address.sin6_family = AF_INET6.convert()
+        address.sin6_port = toNetworkByteOrder(port)
+        failIf(bind(serverSocket, address.ptr.reinterpret(), sizeOf<sockaddr_in6>().convert()) != 0, "Unable to bind port $port")
         failIf(listen(serverSocket, BACKLOG) != 0, "Unable to listen on port $port")
         serverSocket
     }
 
+    private fun setOption(socket: Int, level: Int, option: Int, value: Int) = memScoped {
+        val optionValue = alloc<IntVar>().apply { this.value = value }
+        setsockopt(socket, level, option, optionValue.ptr, sizeOf<IntVar>().convert())
+    }
+
     private fun acceptConnection(serverSocket: Int) = memScoped {
-        val address = alloc<sockaddr_in>()
-        val addressLength = alloc<socklen_tVar>().apply { value = sizeOf<sockaddr_in>().convert() }
+        val address = alloc<sockaddr_in6>()
+        val addressLength = alloc<socklen_tVar>().apply { value = sizeOf<sockaddr_in6>().convert() }
         val clientSocket = accept(serverSocket, address.ptr.reinterpret(), addressLength.ptr)
         if (clientSocket >= 0) {
-            val clientAddress = formatAddress(address.sin_addr.s_addr)
+            val addressBytes = address.sin6_addr.ptr.reinterpret<UByteVar>()
+            val clientAddress = formatAddress(List(16) { addressBytes[it].toInt() })
             activity.connectionStarted()
             startThread(Connection(clientSocket, clientAddress, activity, pacer))
         }
@@ -121,9 +129,6 @@ class HttpServer(private val options: Options) {
             throw ServerException("$message: ${strerror(errno)?.toKString()}")
         }
     }
-
-    private fun formatAddress(networkOrderAddress: UInt): String =
-        (0 until 4).joinToString(".") { index -> ((networkOrderAddress shr (8 * index)) and 0xFFu).toString() }
 
     private fun toNetworkByteOrder(value: Int): UShort =
         (((value and 0xFF) shl 8) or ((value shr 8) and 0xFF)).toUShort()
