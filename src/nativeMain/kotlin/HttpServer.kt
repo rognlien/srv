@@ -55,7 +55,7 @@ class HttpServer(private val options: Options) {
     fun start() {
         signal(SIGPIPE, SIG_IGN)
         val serverSocket = openServerSocket()
-        println("Serving HTTP on 0.0.0.0 port $port (http://0.0.0.0:$port/) ...${throttleNotice()}${idleNotice()}")
+        println("Serving HTTP on port $port: http://localhost:$port/${throttleNotice()}${idleNotice()}")
         while (!isIdle()) {
             if (waitForConnection(serverSocket)) {
                 acceptConnection(serverSocket)
