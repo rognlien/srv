@@ -2,7 +2,7 @@
 
 Serve the current directory over HTTP. A small, dependency-free native take on `python3 -m http.server`, written in Kotlin/Native.
 
-Requires macOS 13 or later on Apple Silicon or Intel.
+Requires macOS 11 (Big Sur) or later on Apple Silicon or Intel.
 
 ## Install
 
