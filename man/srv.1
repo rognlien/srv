@@ -1,0 +1,122 @@
+.Dd September 27, 2026
+.Dt SRV 1
+.Os
+.Sh NAME
+.Nm srv
+.Nd serve the current directory over HTTP
+.Sh SYNOPSIS
+.Nm
+.Op Fl i Ar duration
+.Op Fl t Ar rate
+.Op Ar port
+.Nm
+.Fl h | Fl -help
+.Nm
+.Fl V | Fl -version
+.Sh DESCRIPTION
+.Nm
+starts an HTTP server that serves the files in the current working directory.
+It listens on all IPv4 interfaces on
+.Ar port ,
+which defaults to 8000.
+.Pp
+A request for a directory serves its
+.Pa index.html
+if one exists, and otherwise returns a generated listing of the directory.
+A request for a directory without a trailing slash is redirected to the
+same path with a trailing slash.
+The
+.Ql ..\&
+and
+.Ql .\&
+path segments are ignored, so files outside the current directory cannot be
+reached.
+.Pp
+Only
+.Cm GET
+and
+.Cm HEAD
+requests are supported.
+The content type is chosen from the file name extension.
+Each connection is handled on its own thread and closed after the response.
+.Pp
+Each request is logged to standard output in the same format as
+Python's
+.Ql http.server
+module.
+.Pp
+The options are as follows:
+.Bl -tag -width Ds
+.It Fl i , Fl -idle Ar duration
+Stop the server when no request has been made and no connection has been
+open for
+.Ar duration .
+A plain number is a number of seconds.
+Units can be given as in
+.Ql 30s ,
+.Ql 10m ,
+.Ql 1h
+or
+.Ql 1h 30m .
+.It Fl t , Fl -throttle Ar rate
+Limit the bandwidth to simulate a slow connection.
+The limit is shared by all connections, as on a real network link.
+.Ar rate
+is either a preset, which also delays each response, or a number of bits
+per second with an optional
+.Ql k ,
+.Ql m
+or
+.Ql g
+suffix, such as
+.Ql 500k
+or
+.Ql 1.5m .
+The presets are:
+.Pp
+.Bl -tag -width "edge" -compact
+.It 56k
+56 kbit/s, 150 ms latency
+.It edge
+240 kbit/s, 400 ms latency
+.It 3g
+750 kbit/s, 300 ms latency
+.It 4g
+9 Mbit/s, 100 ms latency
+.El
+.It Fl h , Fl -help
+Print a usage summary and exit.
+.It Fl V , Fl -version
+Print the version and exit.
+.El
+.Sh EXIT STATUS
+.Nm
+runs until it is interrupted, or exits 0 when the
+.Fl i
+duration has passed without requests.
+It exits 1 if the server cannot be started, for example because
+.Ar port
+is already in use, and 2 if the arguments are invalid.
+.Sh EXAMPLES
+Serve the current directory on port 8000:
+.Pp
+.Dl $ srv
+.Pp
+Serve the current directory on port 9000:
+.Pp
+.Dl $ srv 9000
+.Pp
+Serve on port 8000 and stop after ten minutes without requests:
+.Pp
+.Dl $ srv -i 10m
+.Pp
+Serve on port 9000 as if over a 3G connection:
+.Pp
+.Dl $ srv -t 3g 9000
+.Sh SEE ALSO
+.Xr python3 1
+.Sh CAVEATS
+.Nm
+has no access control and serves every file in the current directory to
+anyone who can reach the port.
+Do not run it on untrusted networks.
