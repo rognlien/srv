@@ -6,9 +6,9 @@
 .Nd serve the current directory over HTTP
 .Sh SYNOPSIS
 .Nm
+.Op Fl p Ar port
 .Op Fl i Ar duration
 .Op Fl t Ar rate
-.Op Ar port
 .Nm
 .Fl h | Fl -help
 .Nm
@@ -47,6 +47,10 @@ module.
 .Pp
 The options are as follows:
 .Bl -tag -width Ds
+.It Fl p , Fl -port Ar port
+Listen on
+.Ar port
+instead of 8000.
 .It Fl i , Fl -idle Ar duration
 Stop the server when no request has been made and no connection has been
 open for
@@ -104,7 +108,7 @@ Serve the current directory on port 8000:
 .Pp
 Serve the current directory on port 9000:
 .Pp
-.Dl $ srv 9000
+.Dl $ srv -p 9000
 .Pp
 Serve on port 8000 and stop after ten minutes without requests:
 .Pp
@@ -112,7 +116,7 @@ Serve on port 8000 and stop after ten minutes without requests:
 .Pp
 Serve on port 9000 as if over a 3G connection:
 .Pp
-.Dl $ srv -t 3g 9000
+.Dl $ srv -t 3g -p 9000
 .Sh SEE ALSO
 .Xr python3 1
 .Sh CAVEATS

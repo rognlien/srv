@@ -42,21 +42,22 @@ private fun parseCommand(args: List<String>): Command = when {
 }
 
 private fun parseOptions(args: List<String>): Options {
-    var port: Int? = null
+    var port = DEFAULT_PORT
     var idleTimeout: Duration? = null
     var throttle: Throttle? = null
     val iterator = args.iterator()
     while (iterator.hasNext()) {
         val argument = iterator.next()
         when {
+            argument == "-p" || argument == "--port" -> port = parsePort(requireValue(argument, iterator))
             argument == "-i" || argument == "--idle" -> idleTimeout = parseDuration(requireValue(argument, iterator))
             argument == "-t" || argument == "--throttle" -> throttle = parseThrottleArgument(requireValue(argument, iterator))
             argument.startsWith("-") -> throw ArgumentException("unknown option '$argument'")
-            port != null -> throw ArgumentException("too many arguments")
-            else -> port = parsePort(argument)
+            argument.toIntOrNull() != null -> throw ArgumentException("to choose a port, use -p $argument")
+            else -> throw ArgumentException("unexpected argument '$argument'")
         }
     }
-    return Options(port ?: DEFAULT_PORT, idleTimeout, throttle)
+    return Options(port, idleTimeout, throttle)
 }
 
 private fun requireValue(option: String, iterator: Iterator<String>): String =

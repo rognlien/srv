@@ -8,14 +8,12 @@ import platform.posix.stderr
 import kotlin.system.exitProcess
 
 private val HELP = """
-    |Usage: srv [options] [port]
+    |Usage: srv [options]
     |
     |Serve the current directory over HTTP.
     |
-    |Arguments:
-    |  port                 Port to listen on (default: 8000)
-    |
     |Options:
+    |  -p, --port PORT      Port to listen on (default: 8000)
     |  -i, --idle DURATION  Stop after DURATION without requests,
     |                       e.g. 90 (seconds), 30s, 10m or 1h
     |  -t, --throttle RATE  Limit bandwidth to simulate a slow connection.
