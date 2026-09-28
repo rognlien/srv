@@ -6,11 +6,14 @@ import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.cinterop.addressOf
 import kotlinx.cinterop.alloc
 import kotlinx.cinterop.convert
+import kotlinx.cinterop.value
 import kotlinx.cinterop.memScoped
 import kotlinx.cinterop.pointed
 import kotlinx.cinterop.ptr
 import kotlinx.cinterop.toKString
 import kotlinx.cinterop.usePinned
+import platform.posix.EAGAIN
+import platform.posix.EINTR
 import platform.posix.O_RDONLY
 import platform.posix.R_OK
 import platform.posix.S_IFDIR
@@ -18,10 +21,13 @@ import platform.posix.S_IFMT
 import platform.posix.access
 import platform.posix.close
 import platform.posix.closedir
+import platform.posix.errno
+import platform.posix.off_tVar
 import platform.posix.open
 import platform.posix.opendir
 import platform.posix.read
 import platform.posix.readdir
+import platform.posix.sendfile
 import platform.posix.stat
 
 private const val CHUNK_SIZE = 64 * 1024
@@ -67,3 +73,24 @@ fun streamFile(path: String, consumer: (ByteArray, Int) -> Boolean) {
 
 private fun readChunk(descriptor: Int, buffer: ByteArray): Int =
     buffer.usePinned { read(descriptor, it.addressOf(0), buffer.size.convert()).toInt() }
+
+fun sendFile(path: String, socket: Int): Boolean {
+    val descriptor = open(path, O_RDONLY)
+    val isSent = descriptor >= 0 && transferToSocket(descriptor, socket)
+    if (descriptor >= 0) {
+        close(descriptor)
+    }
+    return isSent
+}
+
+private fun transferToSocket(descriptor: Int, socket: Int): Boolean = memScoped {
+    val sentLength = alloc<off_tVar>()
+    var offset = 0L
+    var result: Int
+    do {
+        sentLength.value = 0
+        result = sendfile(descriptor, socket, offset, sentLength.ptr, null, 0)
+        offset += sentLength.value
+    } while (result != 0 && (errno == EINTR || errno == EAGAIN))
+    result == 0
+}

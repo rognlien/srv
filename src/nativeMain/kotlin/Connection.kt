@@ -93,7 +93,15 @@ class Connection(
 
     private fun sendBody(body: Body) = when (body) {
         is Body.Bytes -> sendBytes(body.content, body.content.size)
-        is Body.File -> streamFile(body.path, ::sendBytes)
+        is Body.File -> sendFileBody(body.path)
+    }
+
+    private fun sendFileBody(path: String) {
+        if (pacer == null) {
+            failed = !sendFile(path, socket)
+        } else {
+            streamFile(path, ::sendBytes)
+        }
     }
 
     private fun sendBytes(bytes: ByteArray, length: Int): Boolean {
