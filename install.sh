@@ -16,15 +16,15 @@ fail() {
 
 detect_platform() {
     case "$(uname -s)" in
-        Darwin) echo "macos-$(detect_macos_architecture)" ;;
-        Linux) echo "linux-$(detect_linux_architecture)" ;;
+        Darwin) echo "$(detect_macos_architecture)-apple-darwin" ;;
+        Linux) echo "$(detect_linux_architecture)-unknown-linux-gnu" ;;
         *) fail "unsupported operating system $(uname -s)" ;;
     esac
 }
 
 detect_macos_architecture() {
     if [ "$(sysctl -n hw.optional.arm64 2>/dev/null || echo 0)" = "1" ]; then
-        echo "arm64"
+        echo "aarch64"
     else
         echo "x86_64"
     fi
@@ -33,7 +33,7 @@ detect_macos_architecture() {
 detect_linux_architecture() {
     case "$(uname -m)" in
         x86_64 | amd64) echo "x86_64" ;;
-        aarch64 | arm64) echo "arm64" ;;
+        aarch64 | arm64) echo "aarch64" ;;
         *) fail "unsupported architecture $(uname -m)" ;;
     esac
 }

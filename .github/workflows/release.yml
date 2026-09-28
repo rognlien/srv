@@ -35,7 +35,7 @@ jobs:
       - name: Package
         run: |
           mkdir dist
-          for target in macosArm64:macos-arm64 macosX64:macos-x86_64 linuxX64:linux-x86_64 linuxArm64:linux-arm64; do
+          for target in macosArm64:aarch64-apple-darwin macosX64:x86_64-apple-darwin linuxArm64:aarch64-unknown-linux-gnu linuxX64:x86_64-unknown-linux-gnu; do
             gradle_target="${target%%:*}"
             platform="${target##*:}"
             archive="srv-${GITHUB_REF_NAME}-${platform}.tar.gz"

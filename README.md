@@ -33,10 +33,10 @@ Download the archive for your system from [Releases](https://github.com/rognlien
 
 | System | Archive |
 |---|---|
-| macOS, Apple Silicon | `srv-<version>-macos-arm64.tar.gz` |
-| macOS, Intel | `srv-<version>-macos-x86_64.tar.gz` |
-| Linux, x86_64 | `srv-<version>-linux-x86_64.tar.gz` |
-| Linux, arm64 | `srv-<version>-linux-arm64.tar.gz` |
+| macOS, Apple Silicon | `srv-<version>-aarch64-apple-darwin.tar.gz` |
+| macOS, Intel | `srv-<version>-x86_64-apple-darwin.tar.gz` |
+| Linux, x86_64 | `srv-<version>-x86_64-unknown-linux-gnu.tar.gz` |
+| Linux, arm64 | `srv-<version>-aarch64-unknown-linux-gnu.tar.gz` |
 
 On macOS, downloading with a browser marks the file as quarantined, so remove that mark before the first run:
 
