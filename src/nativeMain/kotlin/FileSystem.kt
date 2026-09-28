@@ -11,13 +11,16 @@ import kotlinx.cinterop.pointed
 import kotlinx.cinterop.ptr
 import kotlinx.cinterop.toKString
 import kotlinx.cinterop.usePinned
+import platform.posix.O_CLOEXEC
 import platform.posix.O_RDONLY
 import platform.posix.R_OK
+import platform.posix.X_OK
 import platform.posix.S_IFDIR
 import platform.posix.S_IFMT
 import platform.posix.access
 import platform.posix.close
 import platform.posix.closedir
+import platform.posix.getenv
 import platform.posix.open
 import platform.posix.opendir
 import platform.posix.read
@@ -39,6 +42,19 @@ fun fileInfo(path: String): FileInfo? = memScoped {
 
 fun isReadable(path: String): Boolean = access(path, R_OK) == 0
 
+fun findExecutable(name: String): String? =
+    if ('/' in name) {
+        name.takeIf(::isExecutableFile)
+    } else {
+        (getenv("PATH")?.toKString() ?: "/usr/bin:/bin")
+            .split(':')
+            .map { directory -> "${directory.ifEmpty { "." }}/$name" }
+            .firstOrNull(::isExecutableFile)
+    }
+
+private fun isExecutableFile(path: String): Boolean =
+    access(path, X_OK) == 0 && fileInfo(path)?.isDirectory == false
+
 fun listDirectory(path: String): List<String> {
     val names = mutableListOf<String>()
     val directory = opendir(path)
@@ -54,7 +70,7 @@ fun listDirectory(path: String): List<String> {
 }
 
 fun streamFile(path: String, consumer: (ByteArray, Int) -> Boolean) {
-    val descriptor = open(path, O_RDONLY)
+    val descriptor = open(path, O_RDONLY or O_CLOEXEC)
     if (descriptor >= 0) {
         val buffer = ByteArray(CHUNK_SIZE)
         var count = readChunk(descriptor, buffer)
@@ -65,11 +81,11 @@ fun streamFile(path: String, consumer: (ByteArray, Int) -> Boolean) {
     }
 }
 
-private fun readChunk(descriptor: Int, buffer: ByteArray): Int =
+internal fun readChunk(descriptor: Int, buffer: ByteArray): Int =
     buffer.usePinned { read(descriptor, it.addressOf(0), buffer.size.convert()).toInt() }
 
 fun sendFile(path: String, length: Long, socket: Int): Boolean {
-    val descriptor = open(path, O_RDONLY)
+    val descriptor = open(path, O_RDONLY or O_CLOEXEC)
     val isSent = descriptor >= 0 && transferToSocket(descriptor, socket, length)
     if (descriptor >= 0) {
         close(descriptor)

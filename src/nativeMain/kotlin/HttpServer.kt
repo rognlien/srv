@@ -20,6 +20,8 @@ import kotlinx.cinterop.staticCFunction
 import kotlinx.cinterop.toKString
 import kotlinx.cinterop.value
 import platform.posix.AF_INET
+import platform.posix.FD_CLOEXEC
+import platform.posix.F_SETFD
 import platform.posix.AF_INET6
 import platform.posix.IPPROTO_IPV6
 import platform.posix.IPV6_V6ONLY
@@ -29,10 +31,10 @@ import platform.posix.SIG_IGN
 import platform.posix.SOCK_STREAM
 import platform.posix.SOL_SOCKET
 import platform.posix.SO_REUSEADDR
-import platform.posix.accept
 import platform.posix.bind
 import platform.posix.close
 import platform.posix.errno
+import platform.posix.fcntl
 import platform.posix.listen
 import platform.posix.memset
 import platform.posix.poll
@@ -57,6 +59,10 @@ class HttpServer(private val options: Options) {
     private val port = options.port
     private val activity = Activity()
     private val pacer = options.throttle?.let(::Pacer)
+    private val handler: (Request, String) -> Response = when (val source = options.source) {
+        is Source.Directory -> { request, _ -> FileHandler.handle(request) }
+        is Source.Program -> CommandHandler(source)::handle
+    }
 
     fun start() {
         signal(SIGPIPE, SIG_IGN)
@@ -71,8 +77,10 @@ class HttpServer(private val options: Options) {
         println("No requests for ${options.idleTimeout}, stopping.")
     }
 
-    private fun sourceDescription(): String =
-        if (options.directory == ".") "HTTP" else options.directory
+    private fun sourceDescription(): String = when (val source = options.source) {
+        is Source.Directory -> if (source.path == ".") "HTTP" else source.path
+        is Source.Program -> "the output of '${source.arguments.joinToString(" ")}'"
+    }
 
     private fun throttleNotice(): String =
         options.throttle?.let { " Throttled to $it." }.orEmpty()
@@ -95,6 +103,7 @@ class HttpServer(private val options: Options) {
     private fun openServerSocket(): Int {
         val ipv6Socket = socket(AF_INET6, SOCK_STREAM, 0)
         val serverSocket = if (ipv6Socket >= 0) bindIpv6(ipv6Socket) else bindIpv4(socket(AF_INET, SOCK_STREAM, 0))
+        fcntl(serverSocket, F_SETFD, FD_CLOEXEC)
         failIf(listen(serverSocket, BACKLOG) != 0, "Unable to listen on port $port")
         return serverSocket
     }
@@ -129,11 +138,11 @@ class HttpServer(private val options: Options) {
     private fun acceptConnection(serverSocket: Int) = memScoped {
         val address = alloc<sockaddr_in6>()
         val addressLength = alloc<socklen_tVar>().apply { value = sizeOf<sockaddr_in6>().convert() }
-        val clientSocket = accept(serverSocket, address.ptr.reinterpret(), addressLength.ptr)
+        val clientSocket = acceptClient(serverSocket, address.ptr, addressLength.ptr)
         if (clientSocket >= 0) {
             val clientAddress = formatClientAddress(address)
             activity.connectionStarted()
-            startThread(Connection(clientSocket, clientAddress, activity, pacer))
+            startThread(Connection(clientSocket, clientAddress, activity, pacer, handler))
         }
     }
 

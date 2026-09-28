@@ -1,0 +1,16 @@
+package = srv.linux
+headers = unistd.h fcntl.h sys/socket.h
+headerFilter = srv_no_headers.h
+compilerOpts = -D_GNU_SOURCE
+---
+static inline int srv_pipe_cloexec(int* descriptors) {
+    return pipe2(descriptors, O_CLOEXEC);
+}
+
+static inline int srv_accept_cloexec(int socket, void* address, void* length) {
+    return accept4(socket, (struct sockaddr*) address, (socklen_t*) length, SOCK_CLOEXEC);
+}
+
+static inline char** srv_environment(void) {
+    return environ;
+}

@@ -17,6 +17,10 @@ kotlin {
     }
 
     nativeTargets.forEach { target ->
+        val interopName = if (target.konanTarget.family.isAppleFamily) "spawn" else "linux"
+        target.compilations.getByName("main").cinterops.create(interopName) {
+            definitionFile.set(project.file("src/nativeInterop/cinterop/$interopName.def"))
+        }
         target.binaries {
             executable {
                 entryPoint = "srv.main"

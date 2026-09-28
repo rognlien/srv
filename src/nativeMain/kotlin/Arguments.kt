@@ -13,11 +13,18 @@ private val durationUnits = mapOf(
     'h' to DurationUnit.HOURS,
 )
 
+private const val DEFAULT_CONTENT_TYPE = "text/plain; charset=utf-8"
+
+sealed interface Source {
+    data class Directory(val path: String) : Source
+    data class Program(val arguments: List<String>, val contentType: String) : Source
+}
+
 data class Options(
     val port: Int,
     val idleTimeout: Duration?,
     val throttle: Throttle?,
-    val directory: String,
+    val source: Source,
 )
 
 sealed interface Command {
@@ -41,17 +48,18 @@ private class ArgumentParser(arguments: List<String>) {
     private var port = DEFAULT_PORT
     private var idleTimeout: Duration? = null
     private var throttle: Throttle? = null
+    private var contentType: String? = null
+    private var programArguments: List<String>? = null
 
     fun parse(): Command {
         var command: Command? = null
         while (command == null && nextIsOption()) {
             command = parseOption(remaining.removeFirst())
         }
-        return command ?: Command.Serve(Options(port, idleTimeout, throttle, parseDirectory()))
+        return command ?: Command.Serve(Options(port, idleTimeout, throttle, parseSource()))
     }
 
-    private fun nextIsOption(): Boolean =
-        remaining.firstOrNull()?.let { it.startsWith("-") && it != "--" } ?: false
+    private fun nextIsOption(): Boolean = remaining.firstOrNull()?.startsWith("-") ?: false
 
     private fun parseOption(option: String): Command? = when (option) {
         "-h", "--help" -> Command.Help
@@ -64,6 +72,8 @@ private class ArgumentParser(arguments: List<String>) {
             "-p", "--port" -> port = parsePort(nextValue(option))
             "-i", "--idle" -> idleTimeout = parseDuration(nextValue(option))
             "-t", "--throttle" -> throttle = parseThrottleArgument(nextValue(option))
+            "--content-type" -> contentType = nextValue(option)
+            "-c", "--command" -> programArguments = remaining.toList().also { remaining.clear() }
             else -> throw ArgumentException("unknown option '$option'")
         }
     }
@@ -71,14 +81,32 @@ private class ArgumentParser(arguments: List<String>) {
     private fun nextValue(option: String): String =
         remaining.removeFirstOrNull() ?: throw ArgumentException("option '$option' requires a value")
 
-    private fun parseDirectory(): String {
+    private fun parseSource(): Source {
+        val arguments = programArguments
+        val source = if (arguments == null) parseDirectory() else parseProgram(arguments)
+        if (source is Source.Directory && contentType != null) {
+            throw ArgumentException("--content-type only applies to commands (-c)")
+        }
+        return source
+    }
+
+    private fun parseDirectory(): Source.Directory {
         val argument = remaining.firstOrNull()
         return when {
-            argument == null -> "."
-            remaining.size == 1 && fileInfo(argument)?.isDirectory == true -> argument
+            argument == null -> Source.Directory(".")
+            fileInfo(argument)?.isDirectory == true && remaining.size == 1 -> Source.Directory(argument)
+            findExecutable(argument) != null ->
+                throw ArgumentException("'$argument' is not a directory; to run it as a command, use -c ${remaining.joinToString(" ")}")
+            remaining.size > 1 -> throw ArgumentException("too many arguments")
             argument.toIntOrNull() != null -> throw ArgumentException("to choose a port, use -p $argument")
             else -> throw ArgumentException("'$argument' is not a directory")
         }
+    }
+
+    private fun parseProgram(arguments: List<String>): Source.Program {
+        val name = arguments.firstOrNull() ?: throw ArgumentException("option '-c' requires a command")
+        findExecutable(name) ?: throw ArgumentException("command not found: $name")
+        return Source.Program(arguments, contentType ?: DEFAULT_CONTENT_TYPE)
     }
 }
 

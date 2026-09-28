@@ -1,15 +1,22 @@
-.Dd September 27, 2026
+.Dd September 28, 2026
 .Dt SRV 1
 .Os
 .Sh NAME
 .Nm srv
-.Nd serve the current directory over HTTP
+.Nd serve a directory or the output of a command over HTTP
 .Sh SYNOPSIS
 .Nm
 .Op Fl p Ar port
 .Op Fl i Ar duration
 .Op Fl t Ar rate
 .Op Ar directory
+.Nm
+.Op Fl p Ar port
+.Op Fl i Ar duration
+.Op Fl t Ar rate
+.Op Fl -content-type Ar type
+.Fl c Ar command
+.Op Ar argument ...
 .Nm
 .Fl h | Fl -help
 .Nm
@@ -34,6 +41,27 @@ and
 .Ql .\&
 path segments are ignored, so files outside the current directory cannot be
 reached.
+.Pp
+With
+.Fl c ,
+.Nm
+instead runs
+.Ar command
+for every request and sends its standard output as the response, while the
+command is still running.
+Nothing is run at startup, and
+.Cm HEAD
+requests do not run the command.
+When the client disconnects,
+.Nm
+stops the command with
+.Dv SIGTERM ,
+and with
+.Dv SIGKILL
+if it has not exited after two seconds.
+The command is run directly, not through a shell, and its standard error goes
+to the standard error of
+.Nm .
 .Pp
 Only
 .Cm GET
@@ -91,10 +119,43 @@ The presets are:
 .It 4g
 9 Mbit/s, 100 ms latency
 .El
+.It Fl c , Fl -command Ar command Op Ar argument ...
+Serve the output of
+.Ar command
+instead of a directory.
+Everything after
+.Fl c
+belongs to the command, so
+.Fl c
+must be the last option.
+.It Fl -content-type Ar type
+The content type of the command output.
+The default is
+.Ql text/plain; charset=utf-8 .
 .It Fl h , Fl -help
 Print a usage summary and exit.
 .It Fl V , Fl -version
 Print the version and exit.
+.El
+.Sh ENVIRONMENT
+With
+.Fl c ,
+the command inherits the environment of
+.Nm
+with these variables added:
+.Bl -tag -width "SRV_METHOD"
+.It Ev SRV_METHOD
+The request method,
+.Ql GET .
+.It Ev SRV_PATH
+The decoded request path, such as
+.Ql /some file .
+.It Ev SRV_QUERY
+The query string without the leading
+.Ql \&? ,
+as sent.
+.It Ev SRV_CLIENT
+The address of the client.
 .El
 .Sh EXIT STATUS
 .Nm
@@ -123,13 +184,32 @@ Serve on port 8000 and stop after ten minutes without requests:
 .Pp
 .Dl $ srv -i 10m
 .Pp
+Serve the latest commits of the current Git repository:
+.Pp
+.Dl $ srv -c git log --oneline -20
+.Pp
+Stream a log file to the browser as it grows:
+.Pp
+.Dl $ srv -c tail -f app.log
+.Pp
+Use a shell for pipelines and variables:
+.Pp
+.Dl $ srv -c sh -c 'echo \(dqYou asked for $SRV_PATH\(dq'
+.Pp
 Serve on port 9000 as if over a 3G connection:
 .Pp
 .Dl $ srv -t 3g -p 9000
 .Sh SEE ALSO
 .Xr python3 1
 .Sh CAVEATS
+With
+.Fl c ,
+the response starts before the command has finished, so the status is always
+200, even if the command fails.
+A failing exit status is reported on the standard error of
+.Nm .
+.Pp
 .Nm
-has no access control and serves every file in the current directory to
-anyone who can reach the port.
+has no access control and serves every file in the directory, or the output
+of the command, to anyone who can reach the port.
 Do not run it on untrusted networks.

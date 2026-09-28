@@ -3,13 +3,21 @@ package srv
 data class Request(val method: String, val target: String, val requestLine: String)
 
 sealed interface Body {
-    val length: Long
+    val length: Long?
 
     class Bytes(val content: ByteArray) : Body {
-        override val length = content.size.toLong()
+        override val length: Long = content.size.toLong()
     }
 
     class File(val path: String, override val length: Long) : Body
+
+    class Process(val process: ChildProcess) : Body {
+        override val length: Long? = null
+    }
+
+    data object Omitted : Body {
+        override val length: Long? = null
+    }
 }
 
 class Response(
@@ -38,6 +46,7 @@ fun reasonPhrase(status: Int): String = when (status) {
     301 -> "Moved Permanently"
     400 -> "Bad Request"
     404 -> "Not Found"
+    500 -> "Internal Server Error"
     501 -> "Not Implemented"
     else -> "Unknown"
 }
