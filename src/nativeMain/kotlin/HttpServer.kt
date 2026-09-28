@@ -61,7 +61,7 @@ class HttpServer(private val options: Options) {
     fun start() {
         signal(SIGPIPE, SIG_IGN)
         val serverSocket = openServerSocket()
-        println("Serving HTTP on port $port: http://localhost:$port/${throttleNotice()}${idleNotice()}")
+        println("Serving ${sourceDescription()} on port $port: http://localhost:$port/${throttleNotice()}${idleNotice()}")
         while (!isIdle()) {
             if (waitForConnection(serverSocket)) {
                 acceptConnection(serverSocket)
@@ -70,6 +70,9 @@ class HttpServer(private val options: Options) {
         close(serverSocket)
         println("No requests for ${options.idleTimeout}, stopping.")
     }
+
+    private fun sourceDescription(): String =
+        if (options.directory == ".") "HTTP" else options.directory
 
     private fun throttleNotice(): String =
         options.throttle?.let { " Throttled to $it." }.orEmpty()

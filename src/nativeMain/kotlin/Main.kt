@@ -3,14 +3,15 @@
 package srv
 
 import kotlinx.cinterop.ExperimentalForeignApi
+import platform.posix.chdir
 import platform.posix.fputs
 import platform.posix.stderr
 import kotlin.system.exitProcess
 
 private val HELP = """
-    |Usage: srv [options]
+    |Usage: srv [options] [directory]
     |
-    |Serve the current directory over HTTP.
+    |Serve a directory over HTTP (default: the current directory).
     |
     |Options:
     |  -p, --port PORT      Port to listen on (default: 8000)
@@ -35,6 +36,9 @@ fun main(args: Array<String>) {
 }
 
 private fun serve(options: Options) {
+    if (chdir(options.directory) != 0) {
+        fail("unable to enter directory '${options.directory}'", 1)
+    }
     try {
         HttpServer(options).start()
     } catch (exception: ServerException) {

@@ -9,13 +9,16 @@
 .Op Fl p Ar port
 .Op Fl i Ar duration
 .Op Fl t Ar rate
+.Op Ar directory
 .Nm
 .Fl h | Fl -help
 .Nm
 .Fl V | Fl -version
 .Sh DESCRIPTION
 .Nm
-starts an HTTP server that serves the files in the current working directory.
+starts an HTTP server that serves the files in
+.Ar directory ,
+or in the current working directory if no directory is given.
 It listens on all IPv4 and IPv6 interfaces on
 .Ar port ,
 which defaults to 8000.
@@ -109,6 +112,12 @@ Serve the current directory on port 8000:
 Serve the current directory on port 9000:
 .Pp
 .Dl $ srv -p 9000
+.Pp
+Serve the
+.Pa public
+directory:
+.Pp
+.Dl $ srv public
 .Pp
 Serve on port 8000 and stop after ten minutes without requests:
 .Pp

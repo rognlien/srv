@@ -17,6 +17,7 @@ data class Options(
     val port: Int,
     val idleTimeout: Duration?,
     val throttle: Throttle?,
+    val directory: String,
 )
 
 sealed interface Command {
@@ -30,38 +31,56 @@ private class ArgumentException(message: String) : Exception(message)
 
 fun parseArguments(args: Array<String>): Command =
     try {
-        parseCommand(args.toList())
+        ArgumentParser(args.toList()).parse()
     } catch (exception: ArgumentException) {
         Command.Invalid(exception.message.orEmpty())
     }
 
-private fun parseCommand(args: List<String>): Command = when {
-    args.any { it == "-h" || it == "--help" } -> Command.Help
-    args.any { it == "-V" || it == "--version" } -> Command.Version
-    else -> Command.Serve(parseOptions(args))
-}
+private class ArgumentParser(arguments: List<String>) {
+    private val remaining = ArrayDeque(arguments)
+    private var port = DEFAULT_PORT
+    private var idleTimeout: Duration? = null
+    private var throttle: Throttle? = null
 
-private fun parseOptions(args: List<String>): Options {
-    var port = DEFAULT_PORT
-    var idleTimeout: Duration? = null
-    var throttle: Throttle? = null
-    val iterator = args.iterator()
-    while (iterator.hasNext()) {
-        val argument = iterator.next()
-        when {
-            argument == "-p" || argument == "--port" -> port = parsePort(requireValue(argument, iterator))
-            argument == "-i" || argument == "--idle" -> idleTimeout = parseDuration(requireValue(argument, iterator))
-            argument == "-t" || argument == "--throttle" -> throttle = parseThrottleArgument(requireValue(argument, iterator))
-            argument.startsWith("-") -> throw ArgumentException("unknown option '$argument'")
-            argument.toIntOrNull() != null -> throw ArgumentException("to choose a port, use -p $argument")
-            else -> throw ArgumentException("unexpected argument '$argument'")
+    fun parse(): Command {
+        var command: Command? = null
+        while (command == null && nextIsOption()) {
+            command = parseOption(remaining.removeFirst())
+        }
+        return command ?: Command.Serve(Options(port, idleTimeout, throttle, parseDirectory()))
+    }
+
+    private fun nextIsOption(): Boolean =
+        remaining.firstOrNull()?.let { it.startsWith("-") && it != "--" } ?: false
+
+    private fun parseOption(option: String): Command? = when (option) {
+        "-h", "--help" -> Command.Help
+        "-V", "--version" -> Command.Version
+        else -> null.also { applyOption(option) }
+    }
+
+    private fun applyOption(option: String) {
+        when (option) {
+            "-p", "--port" -> port = parsePort(nextValue(option))
+            "-i", "--idle" -> idleTimeout = parseDuration(nextValue(option))
+            "-t", "--throttle" -> throttle = parseThrottleArgument(nextValue(option))
+            else -> throw ArgumentException("unknown option '$option'")
         }
     }
-    return Options(port, idleTimeout, throttle)
-}
 
-private fun requireValue(option: String, iterator: Iterator<String>): String =
-    if (iterator.hasNext()) iterator.next() else throw ArgumentException("option '$option' requires a value")
+    private fun nextValue(option: String): String =
+        remaining.removeFirstOrNull() ?: throw ArgumentException("option '$option' requires a value")
+
+    private fun parseDirectory(): String {
+        val argument = remaining.firstOrNull()
+        return when {
+            argument == null -> "."
+            remaining.size == 1 && fileInfo(argument)?.isDirectory == true -> argument
+            argument.toIntOrNull() != null -> throw ArgumentException("to choose a port, use -p $argument")
+            else -> throw ArgumentException("'$argument' is not a directory")
+        }
+    }
+}
 
 private fun parsePort(argument: String): Int =
     argument.toIntOrNull()?.takeIf { it in 1..65535 } ?: throw ArgumentException("invalid port '$argument'")
