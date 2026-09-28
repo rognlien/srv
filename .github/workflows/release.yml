@@ -27,15 +27,18 @@ jobs:
           key: konan-${{ runner.os }}-${{ hashFiles('build.gradle.kts') }}
 
       - name: Build
-        run: ./gradlew linkReleaseExecutableMacosArm64 linkReleaseExecutableMacosX64 -Pversion="${GITHUB_REF_NAME#v}"
+        run: >-
+          ./gradlew -Pversion="${GITHUB_REF_NAME#v}"
+          linkReleaseExecutableMacosArm64 linkReleaseExecutableMacosX64
+          linkReleaseExecutableLinuxX64 linkReleaseExecutableLinuxArm64
 
       - name: Package
         run: |
           mkdir dist
-          for target in macosArm64:arm64 macosX64:x86_64; do
+          for target in macosArm64:macos-arm64 macosX64:macos-x86_64 linuxX64:linux-x86_64 linuxArm64:linux-arm64; do
             gradle_target="${target%%:*}"
-            architecture="${target##*:}"
-            archive="srv-${GITHUB_REF_NAME}-macos-${architecture}.tar.gz"
+            platform="${target##*:}"
+            archive="srv-${GITHUB_REF_NAME}-${platform}.tar.gz"
             cp "build/bin/${gradle_target}/releaseExecutable/srv.kexe" dist/srv
             cp man/srv.1 dist/srv.1
             cp LICENSE dist/LICENSE
