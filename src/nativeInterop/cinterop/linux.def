@@ -1,5 +1,5 @@
 package = srv.linux
-headers = unistd.h fcntl.h sys/socket.h
+headers = unistd.h fcntl.h sys/socket.h spawn.h
 headerFilter = srv_no_headers.h
 compilerOpts = -D_GNU_SOURCE
 ---
@@ -13,4 +13,8 @@ static inline int srv_accept_cloexec(int socket, void* address, void* length) {
 
 static inline char** srv_environment(void) {
     return environ;
+}
+
+static inline int srv_add_null_input(void* actions) {
+    return posix_spawn_file_actions_addopen((posix_spawn_file_actions_t*) actions, STDIN_FILENO, "/dev/null", O_RDONLY, 0);
 }

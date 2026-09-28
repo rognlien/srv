@@ -17,7 +17,7 @@ private const val DEFAULT_CONTENT_TYPE = "text/plain; charset=utf-8"
 
 sealed interface Source {
     data class Directory(val path: String) : Source
-    data class Program(val arguments: List<String>, val contentType: String) : Source
+    data class Program(val executable: String, val arguments: List<String>, val contentType: String) : Source
 }
 
 data class Options(
@@ -105,8 +105,8 @@ private class ArgumentParser(arguments: List<String>) {
 
     private fun parseProgram(arguments: List<String>): Source.Program {
         val name = arguments.firstOrNull() ?: throw ArgumentException("option '-c' requires a command")
-        findExecutable(name) ?: throw ArgumentException("command not found: $name")
-        return Source.Program(arguments, contentType ?: DEFAULT_CONTENT_TYPE)
+        val executable = findExecutable(name) ?: throw ArgumentException("command not found: $name")
+        return Source.Program(executable, arguments, contentType ?: DEFAULT_CONTENT_TYPE)
     }
 }
 

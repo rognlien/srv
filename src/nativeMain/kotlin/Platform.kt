@@ -22,7 +22,12 @@ internal expect fun acceptClient(serverSocket: Int, address: COpaquePointer, len
 
 internal expect fun createPipe(descriptors: CPointer<IntVar>): Int
 
-internal expect fun spawnProcess(arguments: List<String>, environment: List<String>, outputDescriptor: Int): SpawnResult
+internal expect fun spawnProcess(
+    executable: String,
+    arguments: List<String>,
+    environment: List<String>,
+    outputDescriptor: Int,
+): SpawnResult
 
 internal expect fun currentEnvironment(): List<String>
 

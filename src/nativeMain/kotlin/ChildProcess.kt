@@ -66,12 +66,12 @@ class ChildProcess private constructor(private val processId: Int, val output: I
     }
 
     companion object {
-        fun start(arguments: List<String>, environment: List<String>): ChildProcess = memScoped {
+        fun start(executable: String, arguments: List<String>, environment: List<String>): ChildProcess = memScoped {
             val descriptors = allocArray<IntVar>(2)
             if (createPipe(descriptors) != 0) {
                 throw ProcessException(errno)
             }
-            val result = spawnProcess(arguments, environment, descriptors[1])
+            val result = spawnProcess(executable, arguments, environment, descriptors[1])
             close(descriptors[1])
             if (result.error != 0) {
                 close(descriptors[0])

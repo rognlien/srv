@@ -11,7 +11,7 @@ class CommandHandler(private val program: Source.Program) {
 
     private fun run(request: Request, clientAddress: String): Response =
         try {
-            val process = ChildProcess.start(program.arguments, environment(request, clientAddress))
+            val process = ChildProcess.start(program.executable, program.arguments, environment(request, clientAddress))
             Response(200, Body.Process(process), headers)
         } catch (exception: ProcessException) {
             errorResponse(500, "Unable to run ${program.arguments[0]}: ${exception.message}")
