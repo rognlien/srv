@@ -9,10 +9,12 @@ repositories {
 }
 
 kotlin {
-    if (System.getProperty("os.name") != "Mac OS X") {
-        throw GradleException("srv only builds on macOS.")
+    val linuxTargets = listOf(linuxX64(), linuxArm64())
+    val nativeTargets: List<KotlinNativeTarget> = when (System.getProperty("os.name")) {
+        "Mac OS X" -> listOf(macosArm64(), macosX64()) + linuxTargets
+        "Linux" -> linuxTargets
+        else -> throw GradleException("srv builds on macOS and Linux only.")
     }
-    val nativeTargets: List<KotlinNativeTarget> = listOf(macosArm64(), macosX64())
 
     nativeTargets.forEach { target ->
         target.binaries {
