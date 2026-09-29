@@ -72,8 +72,8 @@ private class ArgumentParser(arguments: List<String>) {
             "-p", "--port" -> port = parsePort(nextValue(option))
             "-i", "--idle" -> idleTimeout = parseDuration(nextValue(option))
             "-t", "--throttle" -> throttle = parseThrottleArgument(nextValue(option))
-            "--content-type" -> contentType = nextValue(option)
-            "-c", "--command" -> programArguments = remaining.toList().also { remaining.clear() }
+            "-c", "--content-type" -> contentType = parseContentType(nextValue(option))
+            "-x", "--exec" -> programArguments = remaining.toList().also { remaining.clear() }
             else -> throw ArgumentException("unknown option '$option'")
         }
     }
@@ -85,7 +85,7 @@ private class ArgumentParser(arguments: List<String>) {
         val arguments = programArguments
         val source = if (arguments == null) parseDirectory() else parseProgram(arguments)
         if (source is Source.Directory && contentType != null) {
-            throw ArgumentException("--content-type only applies to commands (-c)")
+            throw ArgumentException("-c only applies to commands (-x)")
         }
         return source
     }
@@ -96,7 +96,7 @@ private class ArgumentParser(arguments: List<String>) {
             argument == null -> Source.Directory(".")
             fileInfo(argument)?.isDirectory == true && remaining.size == 1 -> Source.Directory(argument)
             findExecutable(argument) != null ->
-                throw ArgumentException("'$argument' is not a directory; to run it as a command, use -c ${remaining.joinToString(" ")}")
+                throw ArgumentException("'$argument' is not a directory; to run it as a command, use -x ${remaining.joinToString(" ")}")
             remaining.size > 1 -> throw ArgumentException("too many arguments")
             argument.toIntOrNull() != null -> throw ArgumentException("to choose a port, use -p $argument")
             else -> throw ArgumentException("'$argument' is not a directory")
@@ -104,7 +104,7 @@ private class ArgumentParser(arguments: List<String>) {
     }
 
     private fun parseProgram(arguments: List<String>): Source.Program {
-        val name = arguments.firstOrNull() ?: throw ArgumentException("option '-c' requires a command")
+        val name = arguments.firstOrNull() ?: throw ArgumentException("option '-x' requires a command")
         val executable = findExecutable(name) ?: throw ArgumentException("command not found: $name")
         return Source.Program(executable, arguments, contentType ?: DEFAULT_CONTENT_TYPE)
     }
@@ -133,6 +133,10 @@ private fun parseDurationWithUnits(text: String): Duration? {
     }
     return total.takeIf { isValid && digits.isEmpty() }
 }
+
+private fun parseContentType(argument: String): String =
+    argument.takeIf { "/" in it }
+        ?: throw ArgumentException("-c expects a content type such as application/json, got '$argument'")
 
 private fun parseThrottleArgument(argument: String): Throttle =
     parseThrottle(argument) ?: throw ArgumentException("invalid throttle '$argument'")

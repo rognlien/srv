@@ -10,7 +10,7 @@ import kotlin.system.exitProcess
 
 private val HELP = """
     |Usage: srv [options] [directory]
-    |       srv [options] -c command [argument...]
+    |       srv [options] -x command [argument...]
     |
     |Serve a directory (default: the current directory) or the output of a
     |command over HTTP.
@@ -22,9 +22,10 @@ private val HELP = """
     |  -t, --throttle RATE  Limit bandwidth to simulate a slow connection.
     |                       A preset (56k, edge, 3g, 4g) also adds latency,
     |                       or give bits per second, e.g. 500k, 2m or 1.5m
-    |  -c, --command ...    Run the command for each request and serve its
-    |                       output. Everything after -c belongs to the command.
-    |  --content-type TYPE  Content type of the command output
+    |  -x, --exec ...       Run the command for each request and serve its
+    |                       output. Everything after -x belongs to the command.
+    |  -c, --content-type TYPE
+    |                       Content type of the command output
     |                       (default: text/plain; charset=utf-8)
     |  -h, --help           Show this help and exit
     |  -V, --version        Show the version and exit

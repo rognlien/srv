@@ -68,15 +68,15 @@ man srv        # shows the manual
 ```
 
 - Serves `index.html` for directories that have one, otherwise a directory listing.
-- With `-c`, runs a command for every request and streams its output:
+- With `-x`, runs a command for every request and streams its output:
 
   ```sh
-  srv -c git log --oneline -20     # the latest commits
-  srv -c tail -f app.log           # a log file, live
-  srv -c sh -c 'ps aux | grep java'
+  srv -x git log --oneline -20     # the latest commits
+  srv -x tail -f app.log           # a log file, live
+  srv -x sh -c 'ps aux | grep java'
   ```
 
-  Everything after `-c` belongs to the command. The command gets the request in `SRV_METHOD`, `SRV_PATH`, `SRV_QUERY` and `SRV_CLIENT`, and is stopped when the client disconnects. Use `--content-type text/html` for commands that produce HTML.
+  Everything after `-x` belongs to the command. The command gets the request in `SRV_METHOD`, `SRV_PATH`, `SRV_QUERY` and `SRV_CLIENT`, and is stopped when the client disconnects. Set the content type of the output with `-c`, such as `srv -c application/json -x ./report.sh`. The default is `text/plain`.
 - Handles each connection on its own thread.
 - Logs each request in the same format as Python's `http.server`.
 
