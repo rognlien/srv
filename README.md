@@ -95,6 +95,16 @@ On macOS, all four targets can be built, since Kotlin/Native cross-compiles to L
 ./build/bin/macosArm64/releaseExecutable/srv.kexe
 ```
 
+## Test
+
+Unit tests run on the host's own target. The end-to-end tests start a built binary and need Python 3. Both run in CI on Linux and macOS for every pull request.
+
+```sh
+./gradlew macosArm64Test    # or linuxX64Test
+./gradlew linkDebugExecutableMacosArm64
+python3 test/e2e.py build/bin/macosArm64/debugExecutable/srv.kexe
+```
+
 ## Release
 
 1. Push a tag such as `v0.4.0`. The release workflow builds arm64 and x86_64 binaries for macOS and Linux and attaches them, together with the man page and license, to a GitHub release. The install script picks up the new release immediately.
