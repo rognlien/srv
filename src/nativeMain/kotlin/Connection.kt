@@ -23,13 +23,14 @@ import platform.posix.pollfd
 import platform.posix.poll
 import platform.posix.fputs
 import platform.posix.POLLIN
-import platform.posix.localtime
+import platform.posix.localtime_r
 import platform.posix.recv
 import platform.posix.send
 import platform.posix.setsockopt
 import platform.posix.strftime
 import platform.posix.time
 import platform.posix.time_tVar
+import platform.posix.tm
 import platform.posix.timeval
 
 private const val MAX_HEAD_SIZE = 8192
@@ -185,8 +186,9 @@ class Connection(
 
     private fun timestamp(): String = memScoped {
         val now = alloc<time_tVar>().apply { value = time(null) }
+        val localTime = alloc<tm>()
         val buffer = allocArray<ByteVar>(64)
-        strftime(buffer, 64u, "%d/%b/%Y %H:%M:%S", localtime(now.ptr))
+        strftime(buffer, 64u, "%d/%b/%Y %H:%M:%S", localtime_r(now.ptr, localTime.ptr))
         buffer.toKString()
     }
 }
