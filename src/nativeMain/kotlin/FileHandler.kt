@@ -14,6 +14,7 @@ object FileHandler {
         val filePath = toFilePath(urlPath)
         val info = fileInfo(filePath)
         return when {
+            '\u0000' in percentDecode(urlPath) -> errorResponse(400, "Bad request")
             info == null || !(info.isDirectory || info.isRegularFile) -> errorResponse(404, "File not found")
             info.isDirectory && !urlPath.endsWith("/") -> redirectResponse("$urlPath/${target.substring(urlPath.length)}")
             info.isDirectory -> serveDirectory(filePath, urlPath)
