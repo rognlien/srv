@@ -72,20 +72,22 @@ fun listDirectory(path: String): List<String> {
     return names.filter { it != "." && it != ".." }.sortedBy { it.lowercase() }
 }
 
-fun streamFile(path: String, consumer: (ByteArray, Int) -> Boolean) {
+fun streamFile(path: String, length: Long, consumer: (ByteArray, Int) -> Boolean) {
     val descriptor = open(path, O_RDONLY or O_CLOEXEC or O_NONBLOCK)
     if (descriptor >= 0) {
         val buffer = ByteArray(CHUNK_SIZE)
-        var count = readChunk(descriptor, buffer)
+        var remaining = length
+        var count = readChunk(descriptor, buffer, minOf(remaining, CHUNK_SIZE.toLong()).toInt())
         while (count > 0 && consumer(buffer, count)) {
-            count = readChunk(descriptor, buffer)
+            remaining -= count
+            count = readChunk(descriptor, buffer, minOf(remaining, CHUNK_SIZE.toLong()).toInt())
         }
         close(descriptor)
     }
 }
 
-internal fun readChunk(descriptor: Int, buffer: ByteArray): Int =
-    buffer.usePinned { read(descriptor, it.addressOf(0), buffer.size.convert()).toInt() }
+internal fun readChunk(descriptor: Int, buffer: ByteArray, size: Int = buffer.size): Int =
+    buffer.usePinned { read(descriptor, it.addressOf(0), size.convert()).toInt() }
 
 fun sendFile(path: String, length: Long, socket: Int): Boolean {
     val descriptor = open(path, O_RDONLY or O_CLOEXEC or O_NONBLOCK)
