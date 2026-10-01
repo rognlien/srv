@@ -28,6 +28,10 @@ kotlin {
             }
         }
     }
+
+    sourceSets.commonTest.dependencies {
+        implementation(kotlin("test"))
+    }
 }
 
 val generateBuildInfo by tasks.registering {
