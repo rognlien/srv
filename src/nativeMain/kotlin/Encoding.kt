@@ -8,7 +8,7 @@ fun percentDecode(value: String): String {
     var index = 0
     while (index < source.size) {
         val encoded = if (source[index] == '%'.code.toByte() && index + 2 < source.size) {
-            source.decodeToString(index + 1, index + 3).toIntOrNull(16)
+            source.decodeToString(index + 1, index + 3).takeIf { it.all(::isHexDigit) }?.toInt(16)
         } else {
             null
         }
@@ -17,6 +17,9 @@ fun percentDecode(value: String): String {
     }
     return output.toByteArray().decodeToString()
 }
+
+private fun isHexDigit(character: Char): Boolean =
+    character in '0'..'9' || character in 'a'..'f' || character in 'A'..'F'
 
 fun percentEncode(value: String): String =
     value.encodeToByteArray().joinToString("") { byte ->
