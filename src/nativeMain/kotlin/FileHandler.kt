@@ -16,7 +16,7 @@ object FileHandler {
         return when {
             '\u0000' in percentDecode(urlPath) -> errorResponse(400, "Bad request")
             info == null || !(info.isDirectory || info.isRegularFile) -> errorResponse(404, "File not found")
-            info.isDirectory && !urlPath.endsWith("/") -> redirectResponse("$urlPath/${target.substring(urlPath.length)}")
+            info.isDirectory && !urlPath.endsWith("/") -> redirectResponse("/${urlPath.trimStart('/')}/${target.substring(urlPath.length)}")
             info.isDirectory -> serveDirectory(filePath, urlPath)
             else -> serveFile(filePath, info)
         }
