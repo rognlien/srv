@@ -1,4 +1,4 @@
-.Dd September 28, 2026
+.Dd October 1, 2026
 .Dt SRV 1
 .Os
 .Sh NAME
@@ -33,14 +33,17 @@ which defaults to 8000.
 A request for a directory serves its
 .Pa index.html
 if one exists, and otherwise returns a generated listing of the directory.
+Only directories and regular files are served; other files, such as named
+pipes and devices, are reported as not found.
 A request for a directory without a trailing slash is redirected to the
 same path with a trailing slash.
 The
 .Ql ..\&
 and
 .Ql .\&
-path segments are ignored, so files outside the current directory cannot be
-reached.
+path segments are ignored, so paths cannot lead outside the current directory.
+Symbolic links are followed, however, including links to files and
+directories outside it.
 .Pp
 With
 .Fl x ,
@@ -70,6 +73,11 @@ and
 requests are supported.
 The content type is chosen from the file name extension.
 Each connection is handled on its own thread and closed after the response.
+At most 128 connections are handled at a time; further connections are
+answered with
+.Ql 503 Service Unavailable .
+A client has 10 seconds to send its request, and a client that stops reading
+the response for 30 seconds is disconnected.
 .Pp
 Each request is logged to standard output in the same format as
 Python's
@@ -215,6 +223,15 @@ A failing exit status is reported on the standard error of
 .Nm .
 .Pp
 .Nm
-has no access control and serves every file in the directory, or the output
-of the command, to anyone who can reach the port.
+has no access control and serves every file in the directory, including
+hidden files such as
+.Pa .git
+and
+.Pa .env ,
+or the output of the command, to anyone who can reach the port.
 Do not run it on untrusted networks.
+.Pp
+When the client disconnects, only
+.Ar command
+itself is stopped.
+Processes it has started in the background keep running.
