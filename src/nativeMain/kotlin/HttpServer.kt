@@ -142,7 +142,10 @@ class HttpServer(private val options: Options) {
         if (clientSocket >= 0) {
             val clientAddress = formatClientAddress(address)
             activity.connectionStarted()
-            startThread(Connection(clientSocket, clientAddress, activity, pacer, handler))
+            if (!startThread(Connection(clientSocket, clientAddress, activity, pacer, handler))) {
+                close(clientSocket)
+                activity.connectionFinished()
+            }
         }
     }
 
@@ -155,11 +158,16 @@ class HttpServer(private val options: Options) {
             formatAddress(List(16) { bytes[it].toInt() })
         }
 
-    private fun startThread(connection: Connection) = memScoped {
+    private fun startThread(connection: Connection): Boolean = memScoped {
         val thread = alloc<pthread_tVar>()
         val reference = StableRef.create(connection)
-        pthread_create(thread.ptr, null, staticCFunction(::runConnection), reference.asCPointer())
-        pthread_detach(thread.value)
+        val isStarted = pthread_create(thread.ptr, null, staticCFunction(::runConnection), reference.asCPointer()) == 0
+        if (isStarted) {
+            pthread_detach(thread.value)
+        } else {
+            reference.dispose()
+        }
+        isStarted
     }
 
     private fun failIf(condition: Boolean, message: String) {
