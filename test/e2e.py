@@ -81,9 +81,9 @@ def free_port():
         return probe.getsockname()[1]
 
 
-def can_connect(port):
+def can_connect(port, host="127.0.0.1"):
     try:
-        socket.create_connection(("127.0.0.1", port), timeout=1).close()
+        socket.create_connection((host, port), timeout=1).close()
         return True
     except OSError:
         return False
@@ -120,6 +120,31 @@ def serves_files_and_directories(directory):
         expect(server.get("/notes.txt").headers["Content-Type"], "text/plain; charset=utf-8", "content type")
         expect(server.get("/docs/").body, b"<h1>docs</h1>\n", "index.html")
         expect(b"notes.txt" in server.get("/").body, True, "listing")
+
+
+@test
+def listens_only_on_localhost_by_default(directory):
+    with Server(directory) as server:
+        expect(can_connect(server.port), True, "127.0.0.1")
+        if has_ipv6():
+            expect(can_connect(server.port, "::1"), False, "::1")
+
+
+@test
+def listens_on_every_address_when_bound_to_the_wildcard(directory):
+    with Server(directory, "-b", "::") as server:
+        expect(can_connect(server.port), True, "127.0.0.1")
+        if has_ipv6():
+            expect(can_connect(server.port, "::1"), True, "::1")
+
+
+def has_ipv6():
+    try:
+        with socket.socket(socket.AF_INET6) as probe:
+            probe.bind(("::1", 0))
+        return True
+    except OSError:
+        return False
 
 
 @test

@@ -6,6 +6,7 @@ import kotlin.time.DurationUnit
 import kotlin.time.toDuration
 
 private const val DEFAULT_PORT = 8000
+private const val DEFAULT_BIND_ADDRESS = "127.0.0.1"
 
 private val durationUnits = mapOf(
     's' to DurationUnit.SECONDS,
@@ -22,6 +23,7 @@ sealed interface Source {
 
 data class Options(
     val port: Int,
+    val bindAddress: BindAddress,
     val idleTimeout: Duration?,
     val throttle: Throttle?,
     val source: Source,
@@ -46,6 +48,7 @@ fun parseArguments(args: Array<String>): Command =
 private class ArgumentParser(arguments: List<String>) {
     private val remaining = ArrayDeque(arguments)
     private var port = DEFAULT_PORT
+    private var bindAddress = parseBindAddressArgument(DEFAULT_BIND_ADDRESS)
     private var idleTimeout: Duration? = null
     private var throttle: Throttle? = null
     private var contentType: String? = null
@@ -56,7 +59,7 @@ private class ArgumentParser(arguments: List<String>) {
         while (command == null && nextIsOption()) {
             command = parseOption(remaining.removeFirst())
         }
-        return command ?: Command.Serve(Options(port, idleTimeout, throttle, parseSource()))
+        return command ?: Command.Serve(Options(port, bindAddress, idleTimeout, throttle, parseSource()))
     }
 
     private fun nextIsOption(): Boolean = remaining.firstOrNull()?.startsWith("-") ?: false
@@ -70,6 +73,7 @@ private class ArgumentParser(arguments: List<String>) {
     private fun applyOption(option: String) {
         when (option) {
             "-p", "--port" -> port = parsePort(nextValue(option))
+            "-b", "--bind" -> bindAddress = parseBindAddressArgument(nextValue(option))
             "-i", "--idle" -> idleTimeout = parseDuration(nextValue(option))
             "-t", "--throttle" -> throttle = parseThrottleArgument(nextValue(option))
             "-c", "--content-type" -> contentType = parseContentType(nextValue(option))
@@ -112,6 +116,10 @@ private class ArgumentParser(arguments: List<String>) {
 
 private fun parsePort(argument: String): Int =
     argument.toIntOrNull()?.takeIf { it in 1..65535 } ?: throw ArgumentException("invalid port '$argument'")
+
+private fun parseBindAddressArgument(argument: String): BindAddress =
+    parseBindAddress(argument)
+        ?: throw ArgumentException("invalid address '$argument'; give an IP address such as 127.0.0.1, 0.0.0.0 or ::")
 
 private fun parseDuration(argument: String): Duration {
     val duration = argument.toLongOrNull()?.seconds ?: parseDurationWithUnits(argument.replace(" ", ""))

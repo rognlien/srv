@@ -31,6 +31,8 @@ internal expect fun spawnProcess(
 
 internal expect fun currentEnvironment(): List<String>
 
+internal expect fun parseAddressText(family: Int, text: String, address: COpaquePointer): Int
+
 internal fun MemScope.cStringArray(values: List<String>): CPointer<CPointerVar<ByteVar>> {
     val array = allocArray<CPointerVar<ByteVar>>(values.size + 1)
     values.forEachIndexed { index, value -> array[index] = value.cstr.getPointer(this) }

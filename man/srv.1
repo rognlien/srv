@@ -7,11 +7,13 @@
 .Sh SYNOPSIS
 .Nm
 .Op Fl p Ar port
+.Op Fl b Ar address
 .Op Fl i Ar duration
 .Op Fl t Ar rate
 .Op Ar directory
 .Nm
 .Op Fl p Ar port
+.Op Fl b Ar address
 .Op Fl i Ar duration
 .Op Fl t Ar rate
 .Op Fl c Ar type
@@ -26,9 +28,12 @@
 starts an HTTP server that serves the files in
 .Ar directory ,
 or in the current working directory if no directory is given.
-It listens on all IPv4 and IPv6 interfaces on
+It listens on
 .Ar port ,
-which defaults to 8000.
+which defaults to 8000, and only accepts connections from the same machine
+unless
+.Fl b
+gives another address.
 .Pp
 A request for a directory serves its
 .Pa index.html
@@ -90,6 +95,18 @@ The options are as follows:
 Listen on
 .Ar port
 instead of 8000.
+.It Fl b , Fl -bind Ar address
+Listen on the IPv4 or IPv6
+.Ar address
+instead of
+.Ql 127.0.0.1 ,
+which only accepts connections from the same machine.
+Use
+.Ql 0.0.0.0
+to accept connections on every IPv4 address, or
+.Ql ::
+to accept them on every IPv4 and IPv6 address, so that other machines on the
+network can connect.
 .It Fl i , Fl -idle Ar duration
 Stop the server when no request has been made and no connection has been
 open for
@@ -173,7 +190,9 @@ runs until it is interrupted, or exits 0 when the
 duration has passed without requests.
 It exits 1 if the server cannot be started, for example because
 .Ar port
-is already in use, and 2 if the arguments are invalid.
+is already in use or
+.Ar address
+does not belong to the machine, and 2 if the arguments are invalid.
 .Sh EXAMPLES
 Serve the current directory on port 8000:
 .Pp
@@ -182,6 +201,10 @@ Serve the current directory on port 8000:
 Serve the current directory on port 9000:
 .Pp
 .Dl $ srv -p 9000
+.Pp
+Let other machines on the network, such as a phone, open the pages:
+.Pp
+.Dl $ srv -b 0.0.0.0
 .Pp
 Serve the
 .Pa public
@@ -229,7 +252,9 @@ hidden files such as
 and
 .Pa .env ,
 or the output of the command, to anyone who can reach the port.
-Do not run it on untrusted networks.
+Only use
+.Fl b
+to listen on other addresses on networks you trust.
 .Pp
 When the client disconnects, only
 .Ar command

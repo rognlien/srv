@@ -1,4 +1,33 @@
+@file:OptIn(ExperimentalForeignApi::class)
+
 package srv
+
+import kotlinx.cinterop.ExperimentalForeignApi
+import kotlinx.cinterop.UByteVar
+import kotlinx.cinterop.allocArray
+import kotlinx.cinterop.get
+import kotlinx.cinterop.memScoped
+import platform.posix.AF_INET
+import platform.posix.AF_INET6
+
+data class BindAddress(val text: String, val bytes: List<Int>) {
+    val isIpv6: Boolean get() = bytes.size == 16
+
+    val urlHost: String
+        get() = when {
+            bytes.all { it == 0 } || text == "127.0.0.1" -> "localhost"
+            isIpv6 -> "[$text]"
+            else -> text
+        }
+}
+
+fun parseBindAddress(text: String): BindAddress? =
+    (addressBytes(AF_INET, text, 4) ?: addressBytes(AF_INET6, text, 16))?.let { BindAddress(text, it) }
+
+private fun addressBytes(family: Int, text: String, size: Int): List<Int>? = memScoped {
+    val buffer = allocArray<UByteVar>(size)
+    if (parseAddressText(family, text, buffer) == 1) List(size) { buffer[it].toInt() } else null
+}
 
 private val ipv4MappedPrefix = List(10) { 0 } + listOf(0xFF, 0xFF)
 

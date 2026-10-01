@@ -66,6 +66,7 @@ xattr -d com.apple.quarantine srv
 srv            # serves the current directory on port 8000
 srv public     # serves the public directory
 srv -p 9000    # serves on port 9000
+srv -b 0.0.0.0 # lets other machines on the network connect, not just this one
 srv -i 10m     # stops after 10 minutes without requests
 srv -t 3g      # simulates a slow connection (56k, edge, 3g, 4g or a rate like 500k)
 srv --help     # shows usage

@@ -21,6 +21,7 @@ links:
 srv            # serves the current directory on port 8000
 srv public     # serves the public directory
 srv -p 9000    # serves on port 9000
+srv -b 0.0.0.0 # lets other machines on the network connect
 srv -i 10m     # stops after 10 minutes without requests
 srv -t 3g      # simulates a slow connection
 man srv        # shows the manual
@@ -29,7 +30,7 @@ man srv        # shows the manual
 ## What it does
 
 - Serves `index.html` for directories that have one, otherwise a directory listing.
-- Listens on IPv4 and IPv6, handles each connection on its own thread, and sends files with `sendfile`.
+- Listens on localhost by default, or on any IPv4 or IPv6 address with `-b`, handles each connection on its own thread, and sends files with `sendfile`.
 - Simulates slow networks with presets for `56k`, `edge`, `3g` and `4g`, or a rate such as `500k`.
 - Stops by itself after a period without requests, with `-i`.
 - Logs each request in the same format as Python's `http.server`.

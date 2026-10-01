@@ -17,6 +17,9 @@ private val HELP = """
     |
     |Options:
     |  -p, --port PORT      Port to listen on (default: 8000)
+    |  -b, --bind ADDRESS   Address to listen on (default: 127.0.0.1, this
+    |                       machine only). Use 0.0.0.0 or :: to accept
+    |                       connections from other machines
     |  -i, --idle DURATION  Stop after DURATION without requests,
     |                       e.g. 90 (seconds), 30s, 10m or 1h
     |  -t, --throttle RATE  Limit bandwidth to simulate a slow connection.

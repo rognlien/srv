@@ -11,7 +11,14 @@ class ArgumentsTest {
 
     @Test
     fun servesTheCurrentDirectoryByDefault() {
-        assertEquals(Command.Serve(Options(8000, null, null, Source.Directory("."))), parse())
+        val localhost = BindAddress("127.0.0.1", listOf(127, 0, 0, 1))
+        assertEquals(Command.Serve(Options(8000, localhost, null, null, Source.Directory("."))), parse())
+    }
+
+    @Test
+    fun bindsToTheGivenAddress() {
+        assertEquals("0.0.0.0", serve("-b", "0.0.0.0").bindAddress.text)
+        assertEquals("::", serve("--bind", "::").bindAddress.text)
     }
 
     @Test
@@ -45,6 +52,7 @@ class ArgumentsTest {
     @Test
     fun rejectsInvalidArguments() {
         assertInvalid("invalid port '0'", "-p", "0")
+        assertInvalid("invalid address 'localhost'; give an IP address such as 127.0.0.1, 0.0.0.0 or ::", "-b", "localhost")
         assertInvalid("invalid duration '10x'", "-i", "10x")
         assertInvalid("invalid duration '0s'", "-i", "0s")
         assertInvalid("invalid throttle 'fast'", "-t", "fast")

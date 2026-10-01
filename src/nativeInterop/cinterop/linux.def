@@ -1,5 +1,5 @@
 package = srv.linux
-headers = unistd.h fcntl.h sys/socket.h spawn.h
+headers = unistd.h fcntl.h sys/socket.h spawn.h arpa/inet.h
 headerFilter = srv_no_headers.h
 compilerOpts = -D_GNU_SOURCE
 ---
@@ -17,4 +17,8 @@ static inline char** srv_environment(void) {
 
 static inline int srv_add_null_input(void* actions) {
     return posix_spawn_file_actions_addopen((posix_spawn_file_actions_t*) actions, STDIN_FILENO, "/dev/null", O_RDONLY, 0);
+}
+
+static inline int srv_parse_address(int family, const char* text, void* address) {
+    return inet_pton(family, text, address);
 }
