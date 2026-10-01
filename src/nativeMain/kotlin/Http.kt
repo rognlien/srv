@@ -29,7 +29,8 @@ class Response(
 fun parseRequest(head: String): Request? {
     val requestLine = head.substringBefore("\r\n")
     val parts = requestLine.split(' ')
-    return if (parts.size == 3) Request(parts[0], parts[1], requestLine) else null
+    val isValid = parts.size == 3 && parts[1].startsWith("/") && requestLine.none(Char::isISOControl)
+    return if (isValid) Request(parts[0], parts[1], requestLine) else null
 }
 
 fun htmlResponse(status: Int, html: String) =
