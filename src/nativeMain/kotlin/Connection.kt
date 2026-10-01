@@ -32,9 +32,13 @@ import platform.posix.time
 import platform.posix.time_tVar
 import platform.posix.tm
 import platform.posix.timeval
+import kotlin.time.Duration.Companion.seconds
+import kotlin.time.TimeMark
+import kotlin.time.TimeSource
 
 private const val MAX_HEAD_SIZE = 8192
 private const val RECEIVE_TIMEOUT_SECONDS = 10
+private val HEAD_TIMEOUT = 10.seconds
 private const val HEAD_TERMINATOR = "\r\n\r\n"
 private const val OUTPUT_CHUNK_SIZE = 64 * 1024
 private const val DISCARD_BUFFER_SIZE = 1024
@@ -79,16 +83,30 @@ class Connection(
     }
 
     private fun readHead(): String {
+        val deadline = TimeSource.Monotonic.markNow() + HEAD_TIMEOUT
         val buffer = ByteArray(MAX_HEAD_SIZE)
         var total = 0
         var complete = false
         while (!complete && total < buffer.size) {
-            val count = buffer.usePinned { recv(socket, it.addressOf(total), (buffer.size - total).convert(), 0) }.toInt()
+            val count = if (awaitInput(deadline)) receive(buffer, total) else 0
             total += maxOf(count, 0)
             complete = count <= 0 || buffer.decodeToString(0, total).contains(HEAD_TERMINATOR)
         }
         return buffer.decodeToString(0, total)
     }
+
+    private fun awaitInput(deadline: TimeMark): Boolean = memScoped {
+        val descriptor = alloc<pollfd>().apply {
+            fd = socket
+            events = POLLIN.convert()
+            revents = 0
+        }
+        val remaining = (-deadline.elapsedNow()).inWholeMilliseconds.coerceAtLeast(0)
+        poll(descriptor.ptr, 1u, remaining.toInt()) > 0
+    }
+
+    private fun receive(buffer: ByteArray, offset: Int): Int =
+        buffer.usePinned { recv(socket, it.addressOf(offset), (buffer.size - offset).convert(), 0) }.toInt()
 
     private fun sendHead(response: Response) {
         val head = buildString {
