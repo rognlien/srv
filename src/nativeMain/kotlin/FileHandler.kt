@@ -14,7 +14,7 @@ object FileHandler {
         val filePath = toFilePath(urlPath)
         val info = fileInfo(filePath)
         return when {
-            info == null -> errorResponse(404, "File not found")
+            info == null || !(info.isDirectory || info.isRegularFile) -> errorResponse(404, "File not found")
             info.isDirectory && !urlPath.endsWith("/") -> redirectResponse("$urlPath/${target.substring(urlPath.length)}")
             info.isDirectory -> serveDirectory(filePath, urlPath)
             else -> serveFile(filePath, info)
@@ -24,7 +24,7 @@ object FileHandler {
     private fun serveDirectory(directoryPath: String, urlPath: String): Response {
         val indexPath = "$directoryPath/$INDEX_FILE"
         val indexInfo = fileInfo(indexPath)
-        return if (indexInfo != null && !indexInfo.isDirectory) {
+        return if (indexInfo?.isRegularFile == true) {
             serveFile(indexPath, indexInfo)
         } else {
             htmlResponse(200, directoryListing(directoryPath, percentDecode(urlPath)))
