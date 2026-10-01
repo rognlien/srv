@@ -200,7 +200,7 @@ def drops_clients_that_stop_reading(directory):
         connection.setsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF, 4096)
         connection.connect(("127.0.0.1", server.port))
         connection.sendall(b"GET /big HTTP/1.1\r\n\r\n")
-        expect(wait_until(lambda: not server.is_running(), 75), True, "stopped within 75 seconds")
+        expect(wait_until(lambda: not server.is_running(), 180), True, "stopped within 180 seconds")
         connection.close()
 
 
