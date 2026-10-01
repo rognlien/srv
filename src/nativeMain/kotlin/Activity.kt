@@ -26,6 +26,8 @@ class Activity {
         activeConnections.decrementAndFetch()
     }
 
+    fun activeConnectionCount(): Int = activeConnections.load()
+
     fun idleTime(): Duration =
         if (activeConnections.load() > 0) Duration.ZERO else (now() - lastActivity.load()).milliseconds
 
