@@ -38,6 +38,12 @@ Download the archive for your system from [Releases](https://github.com/rognlien
 | Linux, x86_64 | `srv-<version>-x86_64-unknown-linux-gnu.tar.gz` |
 | Linux, arm64 | `srv-<version>-aarch64-unknown-linux-gnu.tar.gz` |
 
+To check that an archive was built from this repository by its release workflow, verify its attestation with the [GitHub CLI](https://cli.github.com):
+
+```sh
+gh attestation verify srv-<version>-<platform>.tar.gz --repo rognlien/srv
+```
+
 On macOS, downloading with a browser marks the file as quarantined, so remove that mark before the first run:
 
 ```sh
