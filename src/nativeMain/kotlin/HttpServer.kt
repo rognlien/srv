@@ -3,6 +3,7 @@
 package srv
 
 import kotlinx.cinterop.COpaquePointer
+import kotlinx.cinterop.CPointer
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.cinterop.IntVar
 import kotlinx.cinterop.UByteVar
@@ -15,6 +16,7 @@ import kotlinx.cinterop.memScoped
 import kotlinx.cinterop.pointed
 import kotlinx.cinterop.ptr
 import kotlinx.cinterop.reinterpret
+import kotlinx.cinterop.set
 import kotlinx.cinterop.sizeOf
 import kotlinx.cinterop.staticCFunction
 import kotlinx.cinterop.toKString
@@ -63,6 +65,7 @@ class ServerException(message: String) : Exception(message)
 
 class HttpServer(private val options: Options) {
     private val port = options.port
+    private val bindAddress = options.bindAddress
     private val activity = Activity()
     private val pacer = options.throttle?.let(::Pacer)
     private val handler: (Request, String) -> Response = when (val source = options.source) {
@@ -73,7 +76,7 @@ class HttpServer(private val options: Options) {
     fun start() {
         signal(SIGPIPE, SIG_IGN)
         val serverSocket = openServerSocket()
-        println("Serving ${sourceDescription()} on port $port: http://localhost:$port/${throttleNotice()}${idleNotice()}")
+        println("Serving ${sourceDescription()} on ${bindAddress.text} port $port: http://${bindAddress.urlHost}:$port/${throttleNotice()}${idleNotice()}")
         while (!isIdle()) {
             if (waitForConnection(serverSocket)) {
                 acceptConnection(serverSocket)
@@ -107,21 +110,26 @@ class HttpServer(private val options: Options) {
     }
 
     private fun openServerSocket(): Int {
-        val ipv6Socket = socket(AF_INET6, SOCK_STREAM, 0)
-        val serverSocket = if (ipv6Socket >= 0) bindIpv6(ipv6Socket) else bindIpv4(socket(AF_INET, SOCK_STREAM, 0))
+        val serverSocket = if (bindAddress.isIpv6) {
+            bindIpv6(socket(AF_INET6, SOCK_STREAM, 0))
+        } else {
+            bindIpv4(socket(AF_INET, SOCK_STREAM, 0))
+        }
         fcntl(serverSocket, F_SETFD, FD_CLOEXEC)
         failIf(listen(serverSocket, BACKLOG) != 0, "Unable to listen on port $port")
         return serverSocket
     }
 
     private fun bindIpv6(serverSocket: Int): Int = memScoped {
+        failIf(serverSocket < 0, "Unable to create socket")
         setOption(serverSocket, SOL_SOCKET, SO_REUSEADDR, 1)
         setOption(serverSocket, IPPROTO_IPV6, IPV6_V6ONLY, 0)
         val address = alloc<sockaddr_in6>()
         memset(address.ptr, 0, sizeOf<sockaddr_in6>().convert())
         address.sin6_family = AF_INET6.convert()
         address.sin6_port = toNetworkByteOrder(port)
-        failIf(bind(serverSocket, address.ptr.reinterpret(), sizeOf<sockaddr_in6>().convert()) != 0, "Unable to bind port $port")
+        copyAddress(address.sin6_addr.ptr.reinterpret())
+        failIf(bind(serverSocket, address.ptr.reinterpret(), sizeOf<sockaddr_in6>().convert()) != 0, bindFailure())
         serverSocket
     }
 
@@ -132,9 +140,16 @@ class HttpServer(private val options: Options) {
         memset(address.ptr, 0, sizeOf<sockaddr_in>().convert())
         address.sin_family = AF_INET.convert()
         address.sin_port = toNetworkByteOrder(port)
-        failIf(bind(serverSocket, address.ptr.reinterpret(), sizeOf<sockaddr_in>().convert()) != 0, "Unable to bind port $port")
+        copyAddress(address.sin_addr.ptr.reinterpret())
+        failIf(bind(serverSocket, address.ptr.reinterpret(), sizeOf<sockaddr_in>().convert()) != 0, bindFailure())
         serverSocket
     }
+
+    private fun copyAddress(target: CPointer<UByteVar>) {
+        bindAddress.bytes.forEachIndexed { index, byte -> target[index] = byte.toUByte() }
+    }
+
+    private fun bindFailure(): String = "Unable to bind to ${bindAddress.text} port $port"
 
     private fun setOption(socket: Int, level: Int, option: Int, value: Int) = memScoped {
         val optionValue = alloc<IntVar>().apply { this.value = value }

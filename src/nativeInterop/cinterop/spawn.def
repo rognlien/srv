@@ -1,7 +1,11 @@
 package = srv.spawn
-headers = spawn.h fcntl.h unistd.h
+headers = spawn.h fcntl.h unistd.h arpa/inet.h
 headerFilter = spawn.h sys/spawn.h
 ---
 static inline int srv_add_null_input(void* actions) {
     return posix_spawn_file_actions_addopen((posix_spawn_file_actions_t*) actions, STDIN_FILENO, "/dev/null", O_RDONLY, 0);
+}
+
+static inline int srv_parse_address(int family, const char* text, void* address) {
+    return inet_pton(family, text, address);
 }
