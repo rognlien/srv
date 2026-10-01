@@ -17,6 +17,7 @@ import kotlinx.cinterop.usePinned
 import kotlinx.cinterop.value
 import platform.posix.SOL_SOCKET
 import platform.posix.SO_RCVTIMEO
+import platform.posix.SO_SNDTIMEO
 import platform.posix.close
 import platform.posix.stderr
 import platform.posix.pollfd
@@ -38,6 +39,7 @@ import kotlin.time.TimeSource
 
 private const val MAX_HEAD_SIZE = 8192
 private const val RECEIVE_TIMEOUT_SECONDS = 10
+private const val SEND_TIMEOUT_SECONDS = 30
 private val HEAD_TIMEOUT = 10.seconds
 private const val HEAD_TERMINATOR = "\r\n\r\n"
 private const val OUTPUT_CHUNK_SIZE = 64 * 1024
@@ -55,7 +57,8 @@ class Connection(
     private var failed = false
 
     fun handle() {
-        setReceiveTimeout()
+        setTimeout(SO_RCVTIMEO, RECEIVE_TIMEOUT_SECONDS)
+        setTimeout(SO_SNDTIMEO, SEND_TIMEOUT_SECONDS)
         val head = readHead()
         if (head.isNotEmpty()) {
             respond(parseRequest(head))
@@ -74,12 +77,12 @@ class Connection(
         log(request?.requestLine ?: "-", response.status)
     }
 
-    private fun setReceiveTimeout() = memScoped {
+    private fun setTimeout(option: Int, seconds: Int) = memScoped {
         val timeout = alloc<timeval>().apply {
-            tv_sec = RECEIVE_TIMEOUT_SECONDS.convert()
+            tv_sec = seconds.convert()
             tv_usec = 0
         }
-        setsockopt(socket, SOL_SOCKET, SO_RCVTIMEO, timeout.ptr, sizeOf<timeval>().convert())
+        setsockopt(socket, SOL_SOCKET, option, timeout.ptr, sizeOf<timeval>().convert())
     }
 
     private fun readHead(): String {
