@@ -153,7 +153,7 @@ class Connection(
         if (pacer == null) {
             failed = !sendFile(file.path, file.length, socket)
         } else {
-            streamFile(file.path, ::sendBytes)
+            streamFile(file.path, file.length, ::sendBytes)
         }
     }
 

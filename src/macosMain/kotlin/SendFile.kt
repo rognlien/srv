@@ -16,11 +16,12 @@ import platform.posix.sendfile
 internal actual fun transferToSocket(descriptor: Int, socket: Int, length: Long): Boolean = memScoped {
     val sentLength = alloc<off_tVar>()
     var offset = 0L
-    var result: Int
-    do {
-        sentLength.value = 0
-        result = sendfile(descriptor, socket, offset, sentLength.ptr, null, 0)
+    var failed = false
+    while (offset < length && !failed) {
+        sentLength.value = length - offset
+        val result = sendfile(descriptor, socket, offset, sentLength.ptr, null, 0)
         offset += sentLength.value
-    } while (result != 0 && (errno == EINTR || errno == EAGAIN))
-    result == 0
+        failed = if (result == 0) sentLength.value == 0L else errno != EINTR && errno != EAGAIN
+    }
+    !failed
 }
