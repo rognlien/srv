@@ -18,6 +18,8 @@ import kotlinx.cinterop.reinterpret
 import kotlinx.cinterop.sizeOf
 import kotlinx.cinterop.staticCFunction
 import kotlinx.cinterop.toKString
+import kotlinx.cinterop.usePinned
+import kotlinx.cinterop.addressOf
 import kotlinx.cinterop.value
 import platform.posix.AF_INET
 import platform.posix.FD_CLOEXEC
@@ -25,6 +27,7 @@ import platform.posix.F_SETFD
 import platform.posix.AF_INET6
 import platform.posix.IPPROTO_IPV6
 import platform.posix.IPV6_V6ONLY
+import platform.posix.MSG_DONTWAIT
 import platform.posix.POLLIN
 import platform.posix.SIGPIPE
 import platform.posix.SIG_IGN
@@ -42,6 +45,7 @@ import platform.posix.pollfd
 import platform.posix.pthread_create
 import platform.posix.pthread_detach
 import platform.posix.pthread_tVar
+import platform.posix.send
 import platform.posix.setsockopt
 import platform.posix.signal
 import platform.posix.sockaddr_in
@@ -52,6 +56,8 @@ import platform.posix.strerror
 
 private const val BACKLOG = 128
 private const val POLL_INTERVAL_MILLISECONDS = 1000
+private const val MAX_CONNECTIONS = 128
+private const val BUSY_RESPONSE = "HTTP/1.1 503 Service Unavailable\r\nServer: srv\r\nConnection: close\r\nContent-Length: 0\r\nRetry-After: 1\r\n\r\n"
 
 class ServerException(message: String) : Exception(message)
 
@@ -139,14 +145,25 @@ class HttpServer(private val options: Options) {
         val address = alloc<sockaddr_in6>()
         val addressLength = alloc<socklen_tVar>().apply { value = sizeOf<sockaddr_in6>().convert() }
         val clientSocket = acceptClient(serverSocket, address.ptr, addressLength.ptr)
-        if (clientSocket >= 0) {
-            val clientAddress = formatClientAddress(address)
-            activity.connectionStarted()
-            if (!startThread(Connection(clientSocket, clientAddress, activity, pacer, handler))) {
-                close(clientSocket)
-                activity.connectionFinished()
-            }
+        when {
+            clientSocket < 0 -> Unit
+            activity.activeConnectionCount() >= MAX_CONNECTIONS -> rejectConnection(clientSocket)
+            else -> startConnection(clientSocket, formatClientAddress(address))
         }
+    }
+
+    private fun startConnection(clientSocket: Int, clientAddress: String) {
+        activity.connectionStarted()
+        if (!startThread(Connection(clientSocket, clientAddress, activity, pacer, handler))) {
+            close(clientSocket)
+            activity.connectionFinished()
+        }
+    }
+
+    private fun rejectConnection(clientSocket: Int) {
+        val bytes = BUSY_RESPONSE.encodeToByteArray()
+        bytes.usePinned { send(clientSocket, it.addressOf(0), bytes.size.convert(), MSG_DONTWAIT) }
+        close(clientSocket)
     }
 
     private fun formatClientAddress(address: sockaddr_in6): String =
