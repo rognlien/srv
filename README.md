@@ -21,7 +21,7 @@ brew install rognlien/tap/srv
 curl -fsSL https://raw.githubusercontent.com/rognlien/srv/main/install.sh | sh
 ```
 
-The script works on macOS and Linux. It downloads the latest release for your system, verifies its SHA-256 checksum and installs `srv` into `~/.local/bin` and the man page into `~/.local/share/man/man1`. No `sudo` is needed. Set `SRV_INSTALL_DIR` to install somewhere else, or `SRV_VERSION` (such as `v0.3.1`) to install a specific release:
+The script works on macOS and Linux. It downloads the latest release for your system, verifies its SHA-256 checksum and installs `srv` into `~/.local/bin` and the man page into `~/.local/share/man/man1`. No `sudo` is needed. Set `SRV_INSTALL_DIR` to install somewhere else, or `SRV_VERSION` (such as `v0.7.0`) to install a specific release:
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/rognlien/srv/main/install.sh | SRV_INSTALL_DIR=/usr/local/bin sh

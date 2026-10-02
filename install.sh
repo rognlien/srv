@@ -3,7 +3,7 @@
 #   curl -fsSL https://raw.githubusercontent.com/rognlien/srv/main/install.sh | sh
 #
 # SRV_INSTALL_DIR  directory for the binary (default: ~/.local/bin)
-# SRV_VERSION      release to install, such as v0.3.1 (default: latest)
+# SRV_VERSION      release to install, such as v0.7.0 (default: latest)
 
 set -eu
 
