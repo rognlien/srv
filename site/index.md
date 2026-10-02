@@ -64,7 +64,7 @@ Works on macOS and Linux. Downloads the latest release for your system, verifies
 curl -fsSL https://raw.githubusercontent.com/rognlien/srv/main/install.sh | sh
 ```
 
-Set `SRV_INSTALL_DIR` to install somewhere else, or `SRV_VERSION` (such as `v0.5.1`) to install a specific release. Run the same command again to update.
+Set `SRV_INSTALL_DIR` to install somewhere else, or `SRV_VERSION` (such as `v0.7.0`) to install a specific release. Run the same command again to update.
 
 ### Manual download
 
